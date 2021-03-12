@@ -242,8 +242,9 @@ class AnsibleService(object):
             self.env_var = {'ANSIBLE_LOG_PATH': self.ans_log_path}
 
         # passing the teflo's inventory directory to the Ansible Controller
-        self.ans_controller = AnsibleController(os.path.abspath(self.config['INVENTORY_FOLDER']))
+        #self.ans_controller = AnsibleController(os.path.abspath(self.config['INVENTORY_FOLDER']))
 
+        self.ans_controller = AnsibleController(os.path.abspath('rujuta/inventory/master'))
         # pass the uid as an extra variable to the playbooks so they can save
         # output uniquely to disk in case of concurrent execution
         self.ans_extra_vars = collections.OrderedDict(hosts=self.create_inv_group(), uuid=self.uid)

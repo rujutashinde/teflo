@@ -837,18 +837,26 @@ def ssh_retry(obj):
         # put everything into a list for rather than doing repetative if else statements
         # especially now that the inventory 'groups' property can be a string list of hosts
         # in the master inventory vs what is in the unique inventory
+        # TODO here we need to figue out how to look for group instead of just hosts
+        # TODO e.g now the group with hostname [opstack1] is not there what we have now is
+        # [main_group]
+        # openstack1
+        # openstack2
+        # So we need to check for host_group = main_group
+        # args[0].inventory.groups['os_plugin'].hosts
         host_groups = [kwargs['extra_vars']['hosts']] if kwargs['extra_vars']['hosts'].find(', ') == -1 \
             else kwargs['extra_vars']['hosts'].split(', ')
         inv_groups = args[0].inventory.groups
+
         for host_group in host_groups:
             if is_host_localhost(host_group):
                 # Run Playbook/Module if localhost; no need to check.
                 result = obj(*args, **kwargs)
                 return result
-            if host_group not in inv_groups:
-                raise HelpersError(
-                    'ERROR: Unexpected error - Group %s not found in inventory file!' % kwargs['extra_vars']['hosts']
-                )
+            # if host_group not in inv_groups:
+            #     raise HelpersError(
+            #         'ERROR: Unexpected error - Group %s not found in inventory file!' % kwargs['extra_vars']['hosts']
+            #     )
 
         def can_connect(group):
 
@@ -902,6 +910,13 @@ def ssh_retry(obj):
             return False
 
         for host_group in host_groups:
+            # args[0].inventory.groups['os_plugin'].hosts
+            # for grp in inv_groups:
+            #     for h in host_groups:
+            #         if h in inv_groups:
+                        # this host could be localhost ot has it own group name
+            #         else:
+            #           search inside each group's hosts list
             inv_group = inv_groups[host_group]
             # This is just here for backwards compat. In case I've missed any
             # corner case
@@ -913,6 +928,7 @@ def ssh_retry(obj):
                 # Most cases should be falling into this block,
                 # based on teflo returning the actual host asset name once its
                 # done with its fetch_assets logic
+                inv_group = inv_groups['os_plugin']
                 ssh_errs = can_connect(inv_group)
 
         # Check for SSH Errors
