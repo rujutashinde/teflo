@@ -4,7 +4,7 @@ Teflo Output
 Data Folder
 -----------
 
-When you call teflo, all runtime files, logs, artifacts, etc get stored
+When you call teflo , all runtime files, logs, artifacts, etc get stored
 within a data folder. By default teflo sets the base data folder as the */tmp*
 directory. This can be overridden by either the command line option or
 within the *teflo.cfg*. Each teflo run creates a unique data folder for that
