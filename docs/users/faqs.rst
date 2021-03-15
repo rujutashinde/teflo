@@ -1,7 +1,7 @@
 FAQS
 ====
 
-The following are some answers to frequently asked questions about Teflo.
+The following are some answers to frequently asked questions about Teflo
 
 How Do I...
 -----------
