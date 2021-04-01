@@ -1513,115 +1513,117 @@ class Inventory(LoggerMixin, FileLockMixin, SingletonMixin):
                 with open(self.master_inv) as f:
                     config.read_file(f)
 
-            # # creating a dict host_info to create the host entry in the inv file
-            # host_info = dict()
-            # for host in all_hosts:
-            #     info = dict()
-            #     if getattr(host, 'ip_address', None):
-            #         if isinstance(host.ip_address, dict):
-            #             info['ansible_host'] = host.ip_address.get('public')
-            #         # TODO need to figure out why ip address as list will be needed and change the logic here
-            #         elif isinstance(host.ip_address, list):
-            #             info['ansible_host'] = host.ip_address[0]
-            #         elif isinstance(host.ip_address, string_types):
-            #             info['ansible_host'] = host.ip_address
-            #     for k, v in host.ansible_params.items():
-            #         if k in ['ansible_ssh_private_key_file']:
-            #             v = os.path.join(getattr(host, 'workspace'), v)
-            #         if k == 'ansible_port':
-            #             v = str(v)
-            #         info[k] = v
-            #     host_info[host.name] = info
-            # print(host_info)
-            #
-            # # Sort the list of hosts so that if N number of hosts are getting
-            # # added to same host group the order is predictable.
-            # for host in sorted(all_hosts, key=lambda h: h.name):
-            #     # [group - 1]
-            #     # host - 1 ansible_host = 10.4.5.6
-            #     # host - 2 ansible_host = 10.7.8.9
-            #     #
-            #     # [group - 2]
-            #     # host - 1 ansible_host = 10.4.5.6
-            #     #
-            #     # [group - 3]
-            #     # host - 2 ansible_host = 10.7.8.9
-            #     if hasattr(host, 'groups') or hasattr(host, 'ip_address'):
-            #
-            #         if hasattr(host, 'groups'):
-            #
-            #             for sect in getattr(host, 'groups', []):
-            #                 section = sect
-            #                 entry = host.name
-            #                 for k, v in host_info[host.name].items():
-            #                     entry = entry + ' ' + k + '=' + v
-            #                 if section in config.sections():
-            #                     config.set(section, entry)
-            #                 else:
-            #                     config.add_section(section)
-            #                     config.set(section, entry)
-            #
-            #         # create section(s) for all hosts without groups
-            #         section = host.name
-            #         section_vars = '%s:vars' % section
-            #         info = host_info[host.name]
-            #         for item in [section, section_vars]:
-            #             config.add_section(item)
-            #
-            #         # add ip address
-            #         # TODO need to figure out why ip address as list will be needed and change the logic here
-            #         if isinstance(info.get('ansible_host', None), list):
-            #             [config.set(section, ip) for ip in info.get('ansible_host', None)]
-            #         else:
-            #             config.set(section, info.get('ansible_host', None))
-            #
-            #         # add host vars
-            #         for k, v in info.items():
-            #             if k == 'ansible_host':
-            #                 continue
-            #             else:
-            #                 config.set(section_vars, k, v)
-            #
-            #         # write the inventory
-            #         self.write_inventory(config)
+            # creating a dict host_info to create the host entry in the inv file
+            host_info = dict()
+            for host in all_hosts:
+                info = dict()
+                if getattr(host, 'ip_address', None):
+                    if isinstance(host.ip_address, dict):
+                        info['ansible_host'] = host.ip_address.get('public')
+                    # TODO need to figure out why ip address as list will be needed and change the logic here
+                    elif isinstance(host.ip_address, list):
+                        info['ansible_host'] = host.ip_address[0]
+                    elif isinstance(host.ip_address, string_types):
+                        info['ansible_host'] = host.ip_address
+                for k, v in host.ansible_params.items():
+                    if k == 'ansible_ssh_private_key_file':
+                        v = os.path.join(getattr(host, 'workspace'), v)
+                    if k == 'ansible_port':
+                        v = str(v)
+                    info[k] = v
+                host_info[host.name] = info
+            print(host_info)
 
             # Sort the list of hosts so that if N number of hosts are getting
             # added to same host group the order is predictable.
             for host in sorted(all_hosts, key=lambda h: h.name):
-                section = host.name
-                section_vars = '%s:vars' % section
+                # [group - 1]
+                # host - 1 ansible_host = 10.4.5.6
+                # host - 2 ansible_host = 10.7.8.9
+                #
+                # [group - 2]
+                # host - 1 ansible_host = 10.4.5.6
+                #
+                # [group - 3]
+                # host - 2 ansible_host = 10.7.8.9
                 if hasattr(host, 'groups') or hasattr(host, 'ip_address'):
-                    for sect in getattr(host, 'groups', []):
-                        host_section = sect + ":children"
-                        if host_section in config.sections():
-                            config.set(host_section, host.name)
+
+                    if hasattr(host, 'groups'):
+
+                        for sect in getattr(host, 'groups', []):
+                            section = sect
+                            entry = host.name
+                            for k, v in host_info[host.name].items():
+                                entry = entry + ' ' + k + '=' + v
+                            if section in config.sections():
+                                config.set(section, entry)
+                            else:
+                                config.add_section(section)
+                                config.set(section, entry)
+
+                    else:
+
+                        # create section(s) for all hosts without groups
+                        section = host.name
+                        section_vars = '%s:vars' % section
+                        info = host_info[host.name]
+                        for item in [section, section_vars]:
+                            config.add_section(item)
+
+                        # add ip address
+                        # TODO need to figure out why ip address as list will be needed and change the logic here
+                        if isinstance(info.get('ansible_host', None), list):
+                            [config.set(section, ip) for ip in info.get('ansible_host', None)]
                         else:
-                            config.add_section(host_section)
-                            config.set(host_section, host.name)
+                            config.set(section, info.get('ansible_host', None))
 
-                    # create section(s)
-                    for item in [section, section_vars]:
-                        config.add_section(item)
-
-                    # add ip address to group
-                    if getattr(host, 'ip_address', None):
-                        if isinstance(host.ip_address, dict):
-                            config.set(section, host.ip_address.get('public'))
-                        elif isinstance(host.ip_address, list):
-                            [config.set(section, ip) for ip in host.ip_address]
-                        elif isinstance(host.ip_address, string_types):
-                            config.set(section, host.ip_address)
-
-                    # add host vars
-                    for k, v in host.ansible_params.items():
-                        if k in ['ansible_ssh_private_key_file']:
-                            v = os.path.join(getattr(host, 'workspace'), v)
-                        if k == 'ansible_port':
-                            v = str(v)
-                        config.set(section_vars, k, v)
+                        # add host vars
+                        for k, v in info.items():
+                            if k == 'ansible_host':
+                                continue
+                            else:
+                                config.set(section_vars, k, v)
 
                     # write the inventory
                     self.write_inventory(config)
+
+            # # Sort the list of hosts so that if N number of hosts are getting
+            # # added to same host group the order is predictable.
+            # for host in sorted(all_hosts, key=lambda h: h.name):
+            #     section = host.name
+            #     section_vars = '%s:vars' % section
+            #     if hasattr(host, 'groups') or hasattr(host, 'ip_address'):
+            #         for sect in getattr(host, 'groups', []):
+            #             host_section = sect + ":children"
+            #             if host_section in config.sections():
+            #                 config.set(host_section, host.name)
+            #             else:
+            #                 config.add_section(host_section)
+            #                 config.set(host_section, host.name)
+            #
+            #         # create section(s)
+            #         for item in [section, section_vars]:
+            #             config.add_section(item)
+            #
+            #         # add ip address to group
+            #         if getattr(host, 'ip_address', None):
+            #             if isinstance(host.ip_address, dict):
+            #                 config.set(section, host.ip_address.get('public'))
+            #             elif isinstance(host.ip_address, list):
+            #                 [config.set(section, ip) for ip in host.ip_address]
+            #             elif isinstance(host.ip_address, string_types):
+            #                 config.set(section, host.ip_address)
+            #
+            #         # add host vars
+            #         for k, v in host.ansible_params.items():
+            #             if k in ['ansible_ssh_private_key_file']:
+            #                 v = os.path.join(getattr(host, 'workspace'), v)
+            #             if k == 'ansible_port':
+            #                 v = str(v)
+            #             config.set(section_vars, k, v)
+            #
+            #         # write the inventory
+            #         self.write_inventory(config)
 
         except Exception as ex:
             raise ex

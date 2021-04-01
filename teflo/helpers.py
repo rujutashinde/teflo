@@ -837,15 +837,12 @@ def ssh_retry(obj):
         # put everything into a list for rather than doing repetative if else statements
         # especially now that the inventory 'groups' property can be a string list of hosts
         # in the master inventory vs what is in the unique inventory
-        # TODO here we need to figue out how to look for group instead of just hosts
-        # TODO e.g now the group with hostname [opstack1] is not there what we have now is
-        # [main_group]
-        # openstack1
-        # openstack2
-        # So we need to check for host_group = main_group
-        # args[0].inventory.groups['os_plugin'].hosts
+
+        # host_groups are names of hosts rujuta_1 and host1
         host_groups = [kwargs['extra_vars']['hosts']] if kwargs['extra_vars']['hosts'].find(', ') == -1 \
             else kwargs['extra_vars']['hosts'].split(', ')
+
+        # inv_groups are all the groups that are seen in the inventory rujuta_1 and static1
         inv_groups = args[0].inventory.groups
 
         for host_group in host_groups:
@@ -853,7 +850,28 @@ def ssh_retry(obj):
                 # Run Playbook/Module if localhost; no need to check.
                 result = obj(*args, **kwargs)
                 return result
-            # if host_group not in inv_groups:
+
+        # TODO figure out how we can find the hosts are actually a part of group but do not have a group with their name
+        # TODO created. e.g. now host1 is a part of group static1 but it does not have a separte group named host1 created
+        # TODO as a part of the new design e.g. below
+            # [static1]
+            # host1 ansible_host=127.0.0.1 ansible_connection=local ansible_user=cloud-user
+            # [rujuta_1]
+            # 127.0.1.1[rujuta_1:vars]
+            # ansible_connection=local
+
+            #flag = 0
+            if host_group not in inv_groups:
+                # check if host_group present in the the inv_groups's hosts list, if so append that group to
+                # the inv_groups
+                for item in inv_groups.keys():
+                    #flag = 1
+                    for host in args[0].inventory.groups[item].hosts:
+                        if host.name == host_group:
+                            #flag = 0
+                            break
+            #
+            # if flag == 1:
             #     raise HelpersError(
             #         'ERROR: Unexpected error - Group %s not found in inventory file!' % kwargs['extra_vars']['hosts']
             #     )
@@ -909,15 +927,19 @@ def ssh_retry(obj):
                 return True
             return False
 
+        # host_groups are names of hosts rujuta_1 and host1
+        # inv_groups are all the groups that are seen in the inventory rujuta_1 and static1
         for host_group in host_groups:
-            # args[0].inventory.groups['os_plugin'].hosts
-            # for grp in inv_groups:
-            #     for h in host_groups:
-            #         if h in inv_groups:
-                        # this host could be localhost ot has it own group name
-            #         else:
-            #           search inside each group's hosts list
-            inv_group = inv_groups[host_group]
+
+            if host_group not in inv_groups:
+                for item in inv_groups.keys():
+                    for host in args[0].inventory.groups[item].hosts:
+                        if host.name == host_group:
+                            inv_group = inv_groups[item]
+                            break
+            else:
+                inv_group = inv_groups[host_group]
+
             # This is just here for backwards compat. In case I've missed any
             # corner case
             if hasattr(inv_group, 'child_groups') and inv_group.child_groups:
@@ -928,7 +950,6 @@ def ssh_retry(obj):
                 # Most cases should be falling into this block,
                 # based on teflo returning the actual host asset name once its
                 # done with its fetch_assets logic
-                inv_group = inv_groups['os_plugin']
                 ssh_errs = can_connect(inv_group)
 
         # Check for SSH Errors
